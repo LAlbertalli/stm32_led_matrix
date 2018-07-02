@@ -9,7 +9,7 @@ uint16_t oe_pulse(uint8_t duration){
     TIM1->CR1 |= TIM_CR1_OPM;
     TIM1->CCMR1 &= (uint16_t)~TIM_CCMR1_OC1M;
     TIM1->CCMR1 &= (uint16_t)~TIM_CCMR1_CC1S;
-    TIM1->CCMR1 |= TIM_OCMODE_PWM2;
+    TIM1->CCMR1 |= TIM_OCMODE_PWM1; // Set PWM1 (inverted mode) because OE is off
     TIM1->CCER &= (uint16_t)~TIM_CCER_CC1P;
     TIM1->CCER |= TIM_OCPOLARITY_HIGH;
     TIM1->CCER = TIM_CCER_CC1E; 

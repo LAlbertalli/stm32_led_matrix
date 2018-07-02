@@ -66,7 +66,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-void set_pwm(uint16_t level);
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -139,19 +139,11 @@ int main(void)
   RGB_B2(OUT_OFF);
 
   RGB_CLK(OUT_OFF);
-  //RGB_OE(OUT_OFF);
+  RGB_OE(OUT_OFF);
   RGB_LAT(OUT_OFF);
 
-  TEST(OUT_ON);
-
-  HAL_Delay(1000);
   TEST(OUT_OFF);
-  oe_pulse(128);
-  uint8_t pulse = 1;
   
-  
-  //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); 
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -164,7 +156,7 @@ int main(void)
   /* USER CODE BEGIN 3 */
 
 
-    /*for(uint8_t row = 0; row < NROWS/2; row++){
+    for(uint8_t row = 0; row < NROWS/2; row++){
       for(uint8_t col = 0; col < NCOLS; col++){
         uint8_t pixel = fb[col + row * NCOLS];
         RGB_R1((pixel & 1) ? OUT_ON : OUT_OFF);
@@ -178,35 +170,17 @@ int main(void)
         RGB_CLK(OUT_OFF);
       }
 
-      RGB_OE(OUT_OFF);
+      //RGB_OE(OUT_OFF);
+      oe_pulse_wait();
       RGB_A((row & 0x08) ? OUT_ON : OUT_OFF);
       RGB_B((row & 0x04) ? OUT_ON : OUT_OFF);
       RGB_C((row & 0x02) ? OUT_ON : OUT_OFF);
       RGB_D((row & 0x01) ? OUT_ON : OUT_OFF);
       RGB_LAT(OUT_OFF);
       RGB_LAT(OUT_ON);
-      RGB_OE(OUT_ON);
-      //HAL_TIM_PWM_Start(htim1,TIM_CHANNEL_1);
-      for(uint32_t t = 0; t< 100; t++)
-        asm("NOP");
-    }*/
-    //set_pwm(level);
-    //TEST((level%4096 == 0)?OUT_OFF:OUT_ON);
-    //if (level > 60000)
-      //HAL_TIM_OnePulse_Start(&htim1, TIM_CHANNEL_1);
-    //HAL_Delay(200);
-    //level+=2048;
-      //while(HAL_TIM_PWM_GetState(&htim1) == HAL_TIM_STATE_BUSY)
-      //  asm("NOP");
-      //TEST(OUT_ON);
-      if (pulse){
-        pulse = 0;
-        oe_pulse_wait();
-        TEST(OUT_ON);
-        oe_pulse(16);
-        oe_pulse_wait();
-        TEST(OUT_OFF);
-      }
+      //RGB_OE(OUT_ON);
+      oe_pulse(255);
+    }
   }
   /* USER CODE END 3 */
 
@@ -296,7 +270,7 @@ static void MX_TIM1_Init(void)
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
 
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 2880-1;
+  htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_DOWN;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -330,8 +304,8 @@ static void MX_TIM1_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  sConfigOC.OCMode = TIM_OCMODE_PWM2;
-  sConfigOC.Pulse = 32768;
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -416,26 +390,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 2, 0);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 }
 
 /* USER CODE BEGIN 4 */
-void set_pwm(uint16_t level){
-  TIM_OC_InitTypeDef sConfigOC;
 
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = level;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1);
-  //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); 
-  HAL_TIM_OnePulse_Start(&htim1, TIM_CHANNEL_1);
-}
 /* USER CODE END 4 */
 
 /**
