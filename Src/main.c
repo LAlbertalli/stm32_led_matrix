@@ -42,10 +42,13 @@
 
 /* USER CODE BEGIN Includes */
 #include "rgb_out.h"
+#include "m_driver_stm32f1xx.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
+
+TIM_HandleTypeDef htim1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -56,10 +59,14 @@ SPI_HandleTypeDef hspi1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM1_Init(void);
+                                    
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+                                
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-
+void set_pwm(uint16_t level);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -116,6 +123,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   RGB_A(OUT_OFF);
   RGB_B(OUT_OFF);
@@ -131,11 +139,18 @@ int main(void)
   RGB_B2(OUT_OFF);
 
   RGB_CLK(OUT_OFF);
-  RGB_OE(OUT_OFF);
+  //RGB_OE(OUT_OFF);
   RGB_LAT(OUT_OFF);
 
   TEST(OUT_ON);
 
+  HAL_Delay(1000);
+  TEST(OUT_OFF);
+  oe_pulse(128);
+  uint8_t pulse = 1;
+  
+  
+  //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); 
 
   /* USER CODE END 2 */
 
@@ -149,7 +164,7 @@ int main(void)
   /* USER CODE BEGIN 3 */
 
 
-    for(uint8_t row = 0; row < NROWS/2; row++){
+    /*for(uint8_t row = 0; row < NROWS/2; row++){
       for(uint8_t col = 0; col < NCOLS; col++){
         uint8_t pixel = fb[col + row * NCOLS];
         RGB_R1((pixel & 1) ? OUT_ON : OUT_OFF);
@@ -171,10 +186,27 @@ int main(void)
       RGB_LAT(OUT_OFF);
       RGB_LAT(OUT_ON);
       RGB_OE(OUT_ON);
-      
+      //HAL_TIM_PWM_Start(htim1,TIM_CHANNEL_1);
       for(uint32_t t = 0; t< 100; t++)
         asm("NOP");
-    }
+    }*/
+    //set_pwm(level);
+    //TEST((level%4096 == 0)?OUT_OFF:OUT_ON);
+    //if (level > 60000)
+      //HAL_TIM_OnePulse_Start(&htim1, TIM_CHANNEL_1);
+    //HAL_Delay(200);
+    //level+=2048;
+      //while(HAL_TIM_PWM_GetState(&htim1) == HAL_TIM_STATE_BUSY)
+      //  asm("NOP");
+      //TEST(OUT_ON);
+      if (pulse){
+        pulse = 0;
+        oe_pulse_wait();
+        TEST(OUT_ON);
+        oe_pulse(16);
+        oe_pulse_wait();
+        TEST(OUT_OFF);
+      }
   }
   /* USER CODE END 3 */
 
@@ -254,6 +286,78 @@ static void MX_SPI1_Init(void)
 
 }
 
+/* TIM1 init function */
+static void MX_TIM1_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
+
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 2880-1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim1.Init.Period = 65535;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  if (HAL_TIM_OnePulse_Init(&htim1, TIM_OPMODE_SINGLE) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sConfigOC.OCMode = TIM_OCMODE_PWM2;
+  sConfigOC.Pulse = 32768;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_LOW;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
 /** Configure pins as 
         * Analog 
         * Input 
@@ -276,8 +380,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, OE_Pin|A_Pin|B_Pin|C_Pin 
-                          |D_Pin|LAT_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, A_Pin|B_Pin|C_Pin|D_Pin 
+                          |LAT_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, R1_Pin|G1_Pin|B1_Pin|CLK_Pin 
@@ -294,12 +398,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : OE_Pin */
-  GPIO_InitStruct.Pin = OE_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(OE_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : A_Pin B_Pin C_Pin D_Pin 
                            LAT_Pin */
@@ -324,7 +422,20 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void set_pwm(uint16_t level){
+  TIM_OC_InitTypeDef sConfigOC;
 
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = level;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1);
+  //HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); 
+  HAL_TIM_OnePulse_Start(&htim1, TIM_CHANNEL_1);
+}
 /* USER CODE END 4 */
 
 /**
