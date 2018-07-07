@@ -26,9 +26,11 @@ void get_default_fb(uint8_t index, uint8_t * buffer){{
 }}
 '''
 
-def load_img(filename):
+def load_img(filename, manipulate = None):
   with open(filename, "rb") as f:
     img = Image.open(f)
+    if manipulate:
+      img = manipulate(img)
     return [
       dict(zip(['r','g', 'b'], img.getdata().pixel_access()[(i,j)]))
         for j in xrange(img.size[1]) 
@@ -91,7 +93,14 @@ def fade_lateral(data):
 
 if __name__ == '__main__':
   data0 = load_img("Data/default_inc.bmp")
-  data1 = fade_lateral(data0)
+  def lenna_create(img):
+    img = img.crop((112,30,112+11*32,30+11*64))\
+      .resize((32,64),resample = Image.LANCZOS)\
+      .rotate(-90,expand=True)
+    out = Image.new('RGB', (128,32))
+    out.paste(img,(32,0,96,32))
+    return out
+  data1 = load_img("Data/lenna.png", lenna_create)
   plot(data0)
   plot(data1)
   out([new_enc(data0), new_enc(data1)], sys.argv[1])
