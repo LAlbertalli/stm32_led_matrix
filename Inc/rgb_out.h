@@ -23,6 +23,7 @@
 
 #define NROWS 32 
 #define NCOLS 128
+#define NBIT 4
 
 #define OUT_ON GPIO_PIN_SET
 #define OUT_OFF GPIO_PIN_RESET
