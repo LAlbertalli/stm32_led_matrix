@@ -175,30 +175,34 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-
-    for(uint8_t row = 0; row < NROWS/2; row++){
+    uint8_t row = 0;
+    for(uint8_t r = 0; r < NROWS/2; r++){
+      row = ((r<<1)&15)+((r&8)>>3); // Interlace
       for(uint8_t depth_bit = 0; depth_bit < NBIT; depth_bit++){
+        uint8_t mask1 = 128 >> depth_bit;
+        uint8_t mask2 = 8 >> depth_bit;
         for(uint8_t col = 0; col < NCOLS; col++){
-          uint8_t r_pixel = fb[3*(col + row * NCOLS) + 0];
-          uint8_t g_pixel = fb[3*(col + row * NCOLS) + 1];
-          uint8_t b_pixel = fb[3*(col + row * NCOLS) + 2];
-          RGB_R1((r_pixel & 128 >> depth_bit) ? OUT_ON : OUT_OFF);
-          RGB_G1((g_pixel & 128 >> depth_bit) ? OUT_ON : OUT_OFF);
-          RGB_B1((b_pixel & 128 >> depth_bit) ? OUT_ON : OUT_OFF);
-          RGB_R2((r_pixel & 8 >> depth_bit) ? OUT_ON : OUT_OFF);
-          RGB_G2((g_pixel & 8 >> depth_bit) ? OUT_ON : OUT_OFF);
-          RGB_B2((b_pixel & 8 >> depth_bit) ? OUT_ON : OUT_OFF);
+          uint8_t *pixel = fb+(3*(col + row * NCOLS));
+          RGB_R1((pixel[0] & mask1) ? OUT_ON : OUT_OFF);
+          RGB_G1((pixel[1] & mask1) ? OUT_ON : OUT_OFF);
+          RGB_B1((pixel[2] & mask1) ? OUT_ON : OUT_OFF);
+          RGB_R2((pixel[0] & mask2) ? OUT_ON : OUT_OFF);
+          RGB_G2((pixel[1] & mask2) ? OUT_ON : OUT_OFF);
+          RGB_B2((pixel[2] & mask2) ? OUT_ON : OUT_OFF);
 
           RGB_CLK(OUT_ON);
           RGB_CLK(OUT_OFF);
         }
 
         //RGB_OE(OUT_OFF);
+        
+        if(depth_bit == 0){
+          RGB_A((row & 0x08) ? OUT_ON : OUT_OFF);
+          RGB_B((row & 0x04) ? OUT_ON : OUT_OFF);
+          RGB_C((row & 0x02) ? OUT_ON : OUT_OFF);
+          RGB_D((row & 0x01) ? OUT_ON : OUT_OFF);
+        }
         oe_pulse_wait();
-        RGB_A((row & 0x08) ? OUT_ON : OUT_OFF);
-        RGB_B((row & 0x04) ? OUT_ON : OUT_OFF);
-        RGB_C((row & 0x02) ? OUT_ON : OUT_OFF);
-        RGB_D((row & 0x01) ? OUT_ON : OUT_OFF);
         RGB_LAT(OUT_OFF);
         RGB_LAT(OUT_ON);
         //RGB_OE(OUT_ON);
