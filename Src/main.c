@@ -152,29 +152,20 @@ int main(void)
         uint8_t mask2 = 8 >> depth_bit;
         for(uint8_t col = 0; col < NCOLS; col++){
           const uint8_t * pixel = active_fb+(3*(col + row * NCOLS));
-          RGB_R1((pixel[0] & mask1) ? OUT_ON : OUT_OFF);
-          RGB_G1((pixel[1] & mask1) ? OUT_ON : OUT_OFF);
-          RGB_B1((pixel[2] & mask1) ? OUT_ON : OUT_OFF);
-          RGB_R2((pixel[0] & mask2) ? OUT_ON : OUT_OFF);
-          RGB_G2((pixel[1] & mask2) ? OUT_ON : OUT_OFF);
-          RGB_B2((pixel[2] & mask2) ? OUT_ON : OUT_OFF);
-
-          RGB_CLK(OUT_ON);
-          RGB_CLK(OUT_OFF);
+          clock_pixel(pixel[0] & mask1,
+            pixel[1] & mask1,
+            pixel[2] & mask1,
+            pixel[0] & mask2,
+            pixel[1] & mask2,
+            pixel[2] & mask2
+            );
         }
 
-        //RGB_OE(OUT_OFF);
+        if(depth_bit == 0)
+          clock_row(row);
 
-        if(depth_bit == 0){
-          RGB_A((row & 0x08) ? OUT_ON : OUT_OFF);
-          RGB_B((row & 0x04) ? OUT_ON : OUT_OFF);
-          RGB_C((row & 0x02) ? OUT_ON : OUT_OFF);
-          RGB_D((row & 0x01) ? OUT_ON : OUT_OFF);
-        }
         oe_pulse_wait();
-        RGB_LAT(OUT_OFF);
-        RGB_LAT(OUT_ON);
-        //RGB_OE(OUT_ON);
+        clock_latch();
         oe_pulse(255>>depth_bit);
       }
     }
